@@ -1,9 +1,9 @@
-# Arduino IDE code
+# Arduino IDE code (KOD MŮŽETE ZKOPÍROVAT AŽ NA WIFI BUDE VSE FUNGOVAT I NA VASEM ZARIZENI)
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
 
-// WiFi přihlašovací údaje
+// WiFi přihlašovací údaje (ZADEJTE NÁEZV VAŠÍ WIFI S VAŠÍM HESLEM)
 const char* ssid = "Ziki iPhone";
 const char* password = "zikijegod";
 

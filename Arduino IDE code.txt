@@ -1,0 +1,92 @@
+# Arduino IDE code
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#include <ArduinoJson.h>
+
+// WiFi přihlašovací údaje
+const char* ssid = "Ziki iPhone";
+const char* password = "zikijegod";
+
+// Piny pro zařízení
+const int device1Pin = D1;  // zařízení 1
+const int device2Pin = D2;  // zařízení 2
+
+unsigned long lastCheck = 0;
+const unsigned long interval = 3000; // každé 3 sekundy kontrola
+
+WiFiClient client;
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(device1Pin, OUTPUT);
+  pinMode(device2Pin, OUTPUT);
+  digitalWrite(device1Pin, HIGH);
+  digitalWrite(device2Pin, HIGH);
+
+  WiFi.begin(ssid, password);
+  Serial.print("Připojuji se k WiFi");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nPřipojeno!");
+}
+
+void loop() {
+  if (WiFi.status() == WL_CONNECTED && millis() - lastCheck > interval) {
+    lastCheck = millis();
+    HTTPClient http;
+
+    http.begin(client, "http://remote.tode.cz/get_command.php"); // Oprava
+
+    int httpCode = http.GET();
+
+    if (httpCode == HTTP_CODE_OK) {
+      String payload = http.getString();
+      Serial.println("Odpověď: " + payload);
+
+      if (payload.indexOf("NO_COMMAND") == -1) {
+        StaticJsonDocument<200> doc;
+        DeserializationError error = deserializeJson(doc, payload);
+
+        if (!error) {
+          int deviceId = doc["device_id"];
+          int commandId = doc["command_id"];
+
+          // Provedení pulzního přepnutí
+          if (deviceId == 1) {
+            digitalWrite(device1Pin, LOW);
+            delay(500);
+            digitalWrite(device1Pin, HIGH);
+          } else if (deviceId == 2) {
+            digitalWrite(device2Pin, LOW);
+            delay(500);
+            digitalWrite(device2Pin, HIGH);
+          }
+
+          // Potvrzení příkazu
+          String confirmUrl = "http://remote.tode.cz/confirm_command.php?command_id=" + String(commandId);
+          HTTPClient confirmHttp;
+          confirmHttp.begin(client, confirmUrl);  // Oprava
+          int confirmCode = confirmHttp.GET();
+
+          if (confirmCode == HTTP_CODE_OK) {
+            String confirmResponse = confirmHttp.getString();
+            Serial.println("Potvrzení: " + confirmResponse);
+          }
+
+          confirmHttp.end();
+        }
+      } else {
+        Serial.println("Žádný nový příkaz.");
+      }
+    } else {
+      Serial.println("Chyba při načítání příkazu");
+    }
+
+    http.end();
+  }
+}
